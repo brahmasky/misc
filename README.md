@@ -59,3 +59,4 @@ Reference&#32;&#35;18&#46;e834768&#46;1638849804&#46;2c1382d
 </BODY>
 </HTML>
 ```
+HASH for the repodmd.xml: `4d7cc943cf380d4beb0f016fc37c90d8202682008146fc5549936bcf37c50eed`
