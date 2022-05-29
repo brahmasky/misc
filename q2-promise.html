@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<head>
+  <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <style>
+    @import 'https://code.highcharts.com/css/highcharts.css';
+
+    :root { /* light mode */
+      --background-color: #ffffff;
+      --text-color: #292b2c;
+      --hilight-color: #0275d8;
+    }
+
+    @media (prefers-color-scheme: dark) { 
+        :root {
+            --background-color: #1F2227;
+            --text-color: #c0c0c0;
+            --hilight-color: #8db4d6;
+        }
+        
+        /* Some data colors. Light mode uses defaults */
+        .highcharts-color-0 {
+            fill: #0460ba;
+            stroke: #0460ba;
+        }
+        .highcharts-color-1 {
+            fill: #9696ab;
+            stroke: #9696ab;
+        }
+    }
+
+    body {
+        background-color: var(--background-color);
+    }
+    .highcharts-background {
+        fill: var(--background-color);
+    }
+    .highcharts-container text {
+        fill: var(--text-color);
+    }
+    .highcharts-subtitle,
+    .highcharts-credits,
+    .highcharts-axis-title {
+        fill-opacity: 0.7;
+    }
+    .highcharts-grid-line {
+        stroke: var(--text-color);
+        stroke-opacity: 0.2;
+    }
+    .highcharts-tooltip-box {
+        fill: var(--background-color);
+    }
+    .highcharts-column-series rect.highcharts-point {
+        stroke: var(--background-color);
+    }
+
+  </style>
+</head>
+<html>
+  <body>
+  <div id="containerLine" style="width:100%; height:400px;"></div>
+  <div id="containerPie" style="min-width: 310px; height: 400px; max-width: 600px; margin: 0 auto"></div>
+  <script>
+      $(document).ready(function() {
+        let dataUrls = [
+          'http://s3.amazonaws.com/logtrust-static/test/test/data1.json',
+          'http://s3.amazonaws.com/logtrust-static/test/test/data2.json',
+          'http://s3.amazonaws.com/logtrust-static/test/test/data3.json',
+        ]
+        // global var for array of all three data source and sum
+        let allData=[];
+        let sumAllData=0;
+
+        Promise.all(dataUrls.map(url => fetch(url))).then(responses =>
+          Promise.all(responses.map(response => 
+            response.json())).then((res) => {
+              // console.log(res);
+              
+
+              // data sample from first serie
+              // {
+              //     "d": 1435708800000,
+              //     "cat": "Cat 1",
+              //     "value": 832.803815816826
+              // },
+              data1 = Object.values(res[0]);
+              // console.log(data1)
+              data1.forEach(element => {
+                let category = element.cat.toUpperCase();
+                let dateTime = element.d;
+                let value = element.value;
+                
+                allData.push({'category': category, 'dateTime': dateTime, 'value': value});
+              });
+
+              // data sample from second serie
+              // {
+              //     "myDate": "2015-06-02",
+              //     "categ": "CAT 1",
+              //     "val": 46.300059172697175
+              // },  
+              data2 = Object.values(res[1]);
+              data2.forEach(element => {
+                let date = new Date(element.myDate);
+                
+                const category = element.categ.toUpperCase();
+                const dateTime = date.getTime();
+                const value = element.val;
+
+                allData.push({'category': category, 'dateTime': dateTime, 'value': value});
+              });
+
+
+              // data sample from third serie
+              // {
+              //     "raw": "9OHbc9 O1 WHTxiBPa auwZIVD6 j8jMWWVH UdB6hy 2015-06-18 XF 5xhcx15DD sbYFRPn dyoH1OOIF 6meHw pANknwa2h T imhs24gR5 #CAT 1#",
+              //     "val": 39.38690127513058
+              // },
+              data3 = Object.values(res[2]);
+              data3.forEach(element => {
+                let raw = element.raw;
+
+                // capture the date and category with regex
+                let rawDate = raw.match(/(\d{4})-(\d{2})-(\d{2})/)[0];
+                let newDate = new Date(rawDate);
+                let rawCategory = raw.match(/#(.*)#/);
+
+                let category = rawCategory[1];
+                let dateTime = newDate.getTime();
+                let value = element.val;                            
+                
+                allData.push({'category': category, 'dateTime': dateTime, 'value': value});
+              });
+
+              // sum values by category and date with reducer function
+              let summedDataArray = allData.reduce(sumByCategoryDate, []);
+
+              // Sort array by dateTime
+              summedDataArray.sort(function (a, b) {
+                  if (a.dateTime > b.dateTime) {
+                      return 1;
+                  }
+                  if (a.dateTime < b.dateTime) {
+                      return -1;
+                  }
+                  return 0;
+              });
+              // console.log(summedDataArray)
+              return summedDataArray
+
+          }).then((final) => {
+            // prepare line chart data series
+
+            // group the data series by category with reducer
+            let lineChartSeries = final.reduce(groupByCategory, []);
+            console.log('lineChartSeries',lineChartSeries);
+            createLineChart(lineChartSeries);
+
+            // prepare pie char series
+            let pieChartSeries = [];
+            // sum up the value with reducer, then calculate the percentage of each category
+            final.reduce(sumByCategory, []).forEach(item => {
+              pieChartSeries.push({name: item.category, y: item.value*100/sumAllData})
+            });
+            console.log('pieChartSeries', pieChartSeries);
+
+            createPieChart(pieChartSeries);
+
+
+
+          })
+          ).catch((err) => {
+            console.log(err);
+          })
+        
+        // reducer function to sum up the data value by category and dateTime for line chart
+        function sumByCategoryDate(accumulator, currentItem, currentIndex) {
+            // look up if the currentItem has same dateTime and category
+            index = accumulator.findIndex((item) => item.category === currentItem.category && item.dateTime === currentItem.dateTime)
+            if (index < 0) {
+                accumulator.push(currentItem); // now item added to the array
+            } else {
+                accumulator[index].value += currentItem.value // update the value of already existing item
+            }
+            return accumulator
+        }
+        
+        // reducer function to sum up the data value by category, as well as the total sum of values, for pie chart
+        function sumByCategory(accumulator, currentItem, currentIndex) {
+            // look up if the currentItem has same dateTime and category
+            index = accumulator.findIndex((item) => item.category === currentItem.category)
+            if (index < 0) {
+                accumulator.push(currentItem); // now item added to the array
+            } else {
+                accumulator[index].value += currentItem.value // update the value of already existing item
+            }
+            sumAllData += currentItem.value;
+            return accumulator
+        }
+
+        // reducer function to group the data by category to be used by line chart
+        function groupByCategory(accumulator, currentItem, currentIndex) {
+            // look up if the currentItem has same dateTime and category
+            index = accumulator.findIndex((item) => item.name === currentItem.category)
+            if (index < 0) {
+                accumulator.push({name:currentItem.category, data:[[currentItem.dateTime, currentItem.value]]}); // now item added to the array
+            } else {
+                accumulator[index].data.push([currentItem.dateTime, currentItem.value]) // update the value of already existing item
+            }
+            return accumulator
+        }        
+
+        function createPieChart(data) {
+            // highchart options for pie chart
+            var charOptions = {
+                chart: {
+                  type: 'pie',
+                  styledMode: true,
+                },
+                title: {
+                  text: 'Pie chart by category'
+                },
+                subtitle: {
+                  text: 'The color mode follows the OS setting'
+                },                
+                tooltip: {
+                  pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+                },
+                accessibility: {
+                  point: {
+                    valueSuffix: '%'
+                  }
+                },                
+                plotOptions: {
+                  pie: {
+                    allowPointSelect: true,
+                    cursor: 'pointer',
+                    dataLabels: {
+                      enabled: true,
+                      format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+                      // style: {
+                      //     color: (Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black'
+                      // }
+                    }
+                  }
+                },
+                series: [{
+                  name: 'Category',
+                  colorByPoint: true,
+                  data: data,
+                }]
+            }
+
+            Highcharts.chart('containerPie', charOptions);
+        }
+
+        function createLineChart(data) {
+            // highchart options for line chart
+            var charOptions = {
+                chart: {
+                  type: 'line',
+                  styledMode: true,
+                },
+                title: {
+                  text: 'Line chart by category and time'
+                },
+                subtitle: {
+                  text: 'The color mode follows the OS setting'
+                },
+                xAxis:{
+                 type: 'datetime',
+                 format: '{value:%Y-%b-%e}'
+                },   
+                yAxis: {
+                  title: {
+                    text: 'Value'
+                  }
+                },                             
+                // plotOptions: {
+                //   line: {
+                //     dataLabels: {
+                //       enabled: true
+                //     },
+                //     enableMouseTracking: false
+                //   }
+                // },
+                series: data
+            }
+
+            Highcharts.chart('containerLine', charOptions);
+        }
+      })
+
+    </script>
+  </body>
+</html>
