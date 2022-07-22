@@ -7,8 +7,8 @@ terraform apply -var-file=aws_dev.tfvars
 ```
 Or if running from a different folder from script
 ```
-terraform -chdir=<PATH>/tanium-cicd/terraform/aws_tanium_deployment init
-terraform -chdir=<PATH>tanium-cicd/terraform/aws_tanium_deployment plan -var-file=aws_dev.tfvars
-terraform -chdir=<PATH>tanium-cicd/terraform/aws_tanium_deployment apply -var-file=aws_dev.tfvars
-terraform -chdir=<PATH>tanium-cicd/terraform/aws_tanium_deployment destroy -var-file=aws_dev.tfvars
+terraform -chdir=<PATH>/aws_tanium init
+terraform -chdir=<PATH>/aws_tanium plan -var-file=aws_dev.tfvars
+terraform -chdir=<PATH>/aws_tanium apply -var-file=aws_dev.tfvars
+terraform -chdir=<PATH>/aws_tanium destroy -var-file=aws_dev.tfvars
 ```
