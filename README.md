@@ -60,3 +60,16 @@ Reference&#32;&#35;18&#46;e834768&#46;1638849804&#46;2c1382d
 </HTML>
 ```
 HASH for the repodmd.xml: `4d7cc943cf380d4beb0f016fc37c90d8202682008146fc5549936bcf37c50eed`
+
+
+### https in squid
+- ref: https://dushansilva.medium.com/trying-out-squid-proxy-with-http-https-in-ubuntu-part-2-13a702f8e2b
+- generate certificate
+```
+openssl req -new -newkey rsa:2048 -sha256 -days 365 -nodes -x509 -extensions v3_ca -keyout squid-ca-key.pem -out squid-ca-cert.pem
+cat squid-ca-cert.pem squid-ca-key.pem >> squid-ca-cert-key.pe
+```
+- update squid.conf
+```
+acl SSL_ports port 3002 # backend port
+https_port 3129 tls-cert=/etc/squid/squid-ca-cert-key.pem
