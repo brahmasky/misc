@@ -73,3 +73,39 @@ cat squid-ca-cert.pem squid-ca-key.pem >> squid-ca-cert-key.pe
 ```
 acl SSL_ports port 3002 # backend port
 https_port 3129 tls-cert=/etc/squid/squid-ca-cert-key.pem
+
+### a quick shell script by ChatGPT to list out the folder size in a S3 bucket
+```shell
+#!/bin/bash
+
+# Set the S3 bucket name
+BUCKET_NAME="my_bucket"
+
+# Set the AWS CLI profile name
+PROFILE_NAME="my_profile"
+
+# Get a list of all folders in the bucket
+folders=$(aws s3 ls s3://$BUCKET_NAME/ --profile $PROFILE_NAME | awk '$NF ~ /\/$/ {print $NF}')
+
+# Print the header row
+echo "Folder | Size | Object | Last Object Date Time"
+
+# Loop through each folder and calculate its size and object count
+for folder in $folders
+do
+    # Get the size of the folder in human-readable format
+    size=$(aws s3 ls s3://$BUCKET_NAME/$folder --recursive --human-readable --summarize --profile $PROFILE_NAME | awk '/Total Size/ {print $3 " " $4}')
+
+    # Get the object count in the folder
+    count=$(aws s3 ls s3://$BUCKET_NAME/$folder --recursive --profile $PROFILE_NAME | wc -l)
+
+    # Get the last object in the folder
+    last_object=$(aws s3 ls s3://$BUCKET_NAME/$folder --recursive --profile $PROFILE_NAME | tail -n 1 | awk '{print $4}')
+
+    # Extract the date time string from the last object
+    date_time=$(echo $last_object | awk -F'[_.]' '{print $3"_"$4}')
+
+    # Output the folder name, size, object count, and last object date time string
+    echo "$folder | $size | $((count-1)) | $date_time"
+done
+```
