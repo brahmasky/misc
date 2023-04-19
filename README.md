@@ -73,6 +73,7 @@ cat squid-ca-cert.pem squid-ca-key.pem >> squid-ca-cert-key.pe
 ```
 acl SSL_ports port 3002 # backend port
 https_port 3129 tls-cert=/etc/squid/squid-ca-cert-key.pem
+```
 
 ### a quick shell script by ChatGPT to list out the folder size in a S3 bucket
 ```shell
